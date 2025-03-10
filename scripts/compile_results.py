@@ -132,6 +132,159 @@ def process_perf_log(path):
     #output['pwc'] = round((((loads + stores) * 100)/cycles), 2)
     #print(output)
     #summary.append(output)
+
+def process_perf_log_new(path, measurements):
+    fd = open_file(path, "r")
+    if fd is None:
+        return
+
+    if 'vmstat' in path:
+        # Existing vmstat handling
+        copy0 = copy1 = -1
+        for line in fd:
+            if 'pgmigrate_success' in line:
+                if copy0 == -1:
+                    copy0 = int(line.split()[1])
+                else:
+                    copy1 = int(line.split()[1])
+        fd.close()
+        return (copy1 - copy0)
+    else:
+        # Initialize all metrics
+        metric_vals = {
+            "dTLBloads": 0,
+            "dTLBstores": 0,
+            "dtlb_load_misses.stlb_hit": 0,
+            "dtlb_load_misses.miss_causes_a_walk": 0,
+            "dtlb_load_misses.walk_duration": 0,
+            "dtlb_load_misses.walk_completed": 0,
+            "dtlb_load_misses.walk_completed_4k": 0,
+            "dtlb_load_misses.walk_completed_2m_4m": 0,
+            "dtlb_load_misses.walk_completed_1g": 0,
+            "dtlb_store_misses.stlb_hit": 0,
+            "dtlb_store_misses.miss_causes_a_walk": 0,
+            "dtlb_store_misses.walk_duration": 0,
+            "dtlb_store_misses.walk_completed": 0,
+            "dtlb_store_misses.walk_completed_4k": 0,
+            "dtlb_store_misses.walk_completed_2m_4m": 0,
+            "dtlb_store_misses.walk_completed_1g": 0,
+            "pagefaults": 0,
+            "cycles": 0,
+            "dtlb_load_misses.stlb_hit_4k": 0,
+            "dtlb_load_misses.stlb_hit_2m": 0,
+            "dtlb_store_misses.stlb_hit_4k": 0,
+            "dtlb_store_misses.stlb_hit_2m": 0,
+            "page_walker_loads.dtlb_l1": 0,
+            "page_walker_loads.dtlb_l2": 0,
+            "page_walker_loads.dtlb_l3": 0,
+            "page_walker_loads.dtlb_memory": 0,
+            "exec_time": 0
+        }
+
+        # Parse log file
+        for line in fd:
+            # Handle execution time separately
+            if 'Execution Time (seconds)' in line:
+                metric_vals["exec_time"] = get_time_from_log(line)
+                continue
+                    
+            # Skip header lines
+            if line.startswith('#'):
+                continue
+
+            # Split and parse perf counters
+            parts = line.strip().split(',')
+            if len(parts) < 3:  # Ensure we have at least 3 parts
+                continue
+
+            # Extract event name and value
+            event_name = parts[2].strip()
+            value = float(parts[0])
+            
+            # Map to our metric names
+            if event_name in metric_vals:
+                metric_vals[event_name] = value
+            elif event_name == 'page-faults':
+                metric_vals["pagefaults"] = value
+            elif event_name == 'dTLB-loads':
+                metric_vals["dTLBloads"] = value
+            elif event_name == 'dTLB-stores':
+                metric_vals["dTLBstores"] = value
+
+        fd.close()
+        cycles = metric_vals["cycles"]
+
+        #tlb_ld_misses = metric_vals["dTLBloadmisses"]
+        tlb_lds = metric_vals["dTLBloads"]
+        #tlb_st_misses = metric_vals["dTLBstoremisses"]
+        if metric_vals["dTLBstores"] > 0:
+            tlb_sts = metric_vals["dTLBstores"]
+        else:
+            tlb_sts = 0
+        tlb_refs = tlb_lds + tlb_sts
+        tlb_ld_stlb = metric_vals["dtlb_load_misses.stlb_hit"]
+        tlb_ld_walks = metric_vals["dtlb_load_misses.miss_causes_a_walk"]
+        tlb_ld_walk_cycles = metric_vals["dtlb_load_misses.walk_duration"]
+        tlb_ld_walk_completed = metric_vals["dtlb_load_misses.walk_completed"]
+        tlb_ld_walk_completed_4k = metric_vals["dtlb_load_misses.walk_completed_4k"]
+        tlb_ld_walk_completed_2m = metric_vals["dtlb_load_misses.walk_completed_2m_4m"]
+        tlb_ld_walk_completed_1g = metric_vals["dtlb_load_misses.walk_completed_1g"]
+        tlb_st_stlb = metric_vals["dtlb_store_misses.stlb_hit"]
+        tlb_st_walks = metric_vals["dtlb_store_misses.miss_causes_a_walk"]
+        tlb_st_walk_cycles = metric_vals["dtlb_store_misses.walk_duration"]
+        tlb_st_walk_completed = metric_vals["dtlb_store_misses.walk_completed"]
+        tlb_st_walk_completed_4k = metric_vals["dtlb_store_misses.walk_completed_4k"]
+        tlb_st_walk_completed_2m = metric_vals["dtlb_store_misses.walk_completed_2m_4m"]
+        tlb_st_walk_completed_1g = metric_vals["dtlb_store_misses.walk_completed_1g"]
+        page_faults = metric_vals["pagefaults"]
+        tlb_stlb = tlb_ld_stlb + tlb_st_stlb
+        tlb_walks = tlb_ld_walks + tlb_st_walks
+        tlb_misses = tlb_stlb + tlb_walks
+        tlb_walk_cycles = tlb_ld_walk_cycles + tlb_st_walk_cycles
+        tlb_walk_completed = tlb_ld_walk_completed + tlb_st_walk_completed
+        tlb_walk_completed_4k = tlb_ld_walk_completed_4k + tlb_st_walk_completed_4k
+        tlb_walk_completed_2m = tlb_ld_walk_completed_2m + tlb_st_walk_completed_2m
+        tlb_walk_completed_1g = tlb_ld_walk_completed_1g + tlb_st_walk_completed_1g
+        tlb_walk_completed_tot = tlb_walk_completed_4k + tlb_walk_completed_2m + tlb_walk_completed_1g
+        tlb_miss_rate = tlb_misses*100.0/tlb_refs if (tlb_refs > 0) else 0
+
+        tlb_ld_stlb_4k = metric_vals["dtlb_load_misses.stlb_hit_4k"]
+        tlb_ld_stlb_2m = metric_vals["dtlb_load_misses.stlb_hit_2m"]
+        tlb_st_stlb_4k = metric_vals["dtlb_store_misses.stlb_hit_4k"]
+        tlb_st_stlb_2m = metric_vals["dtlb_store_misses.stlb_hit_2m"]
+        tlb_stlb_4k = tlb_ld_stlb_4k + tlb_st_stlb_4k
+        tlb_stlb_2m = tlb_ld_stlb_2m + tlb_st_stlb_2m
+        walker_loads_l1 = metric_vals["page_walker_loads.dtlb_l1"]
+        walker_loads_l2 = metric_vals["page_walker_loads.dtlb_l2"]
+        walker_loads_l3 = metric_vals["page_walker_loads.dtlb_l3"]
+        walker_loads_mem = metric_vals["page_walker_loads.dtlb_memory"]
+        measurements.write("4KB STLB Hit: " + str(tlb_stlb_4k*100.0/tlb_stlb) + "\n")
+        measurements.write("2MB STLB Hit: " + str(tlb_stlb_2m*100.0/tlb_stlb) + "\n")
+        measurements.write("Page Walker L1 Loads: " + str(walker_loads_l1*100.0/tlb_walks) + "\n")
+        measurements.write("Page Walker L2 Loads: " + str(walker_loads_l2*100.0/tlb_walks) + "\n")
+        measurements.write("Page Walker L3 Loads: " + str(walker_loads_l3*100.0/tlb_walks) + "\n")
+        measurements.write("Page Walker Mem Loads: " + str(walker_loads_mem*100.0/tlb_walks) + "\n")
+        measurements.write("\n")
+
+        measurements.write("TLB:\n")
+        measurements.write("TLB Miss Rate: " + str(tlb_miss_rate) + "\n")
+        if (tlb_walks > 0):
+            measurements.write("STLB Miss Rate: " + str(tlb_walks*100.0/(tlb_walks+tlb_stlb)) + "\n")
+            measurements.write("Page Fault Rate: " + str(page_faults*100.0/tlb_walks) + "\n")
+        if (tlb_refs > 0):
+            measurements.write("Percent of TLB Accesses with PT Walks: " + str(tlb_walks*100.0/tlb_refs) + "\n")
+            measurements.write("Percent of TLB Accesses with Completed PT Walks: " + str(tlb_walk_completed*100.0/tlb_refs) + "\n")
+            measurements.write("Percent of TLB Accesses with Page Faults: " + str(page_faults*100.0/tlb_refs) + "\n")
+        measurements.write("Percent of Cycles Spent on PT Walks: " + str(tlb_walk_cycles*100.0/cycles) + "\n")
+        measurements.write("Average Cycles Spent on PT Walk: " + str(tlb_walk_cycles*100.0/tlb_walk_completed) + "\n")
+        if (tlb_walk_completed_tot > 0):
+            measurements.write("4KB Page Table Walks: " + str(tlb_walk_completed_4k*100.0/tlb_walk_completed_tot) + "\n")
+            measurements.write("2MB/4MB Page Table Walks: " + str(tlb_walk_completed_2m*100.0/tlb_walk_completed_tot) + "\n")
+            measurements.write("1GB Page Table Walks: " + str(tlb_walk_completed_1g*100.0/tlb_walk_completed_tot) + "\n")
+        measurements.write("\n")
+    measurements.close()
+
+
  
 def traverse_benchmark(path):
     # --- process THP and NON-THP configs separately
@@ -144,6 +297,11 @@ def traverse_benchmark(path):
                 copy = process_perf_log(log)
             else:
                 (time, pwc) = process_perf_log(log)
+                if 'perflog' in log:
+                    output_file = os.path.join(out_dir, f"{curr_bench}_{curr_config}_measurements.txt")
+                    with open(output_file, 'w') as measurements:
+                        process_perf_log_new(log, measurements)
+
             record_output(time, pwc, copy)
 
 def pretty(name):
@@ -268,6 +426,7 @@ def gen_report(root):
     # gen_fig7_csv(root)
 
 if __name__=="__main__":
+    global root, datadir, out_dir
     summary = []
     avg_summary = []
     root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
