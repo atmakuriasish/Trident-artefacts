@@ -14,7 +14,7 @@ BC_ARGS=" -g 29 -n 2 -i 2"
 
 # always run on socket-0
 DATA_NODE=0
-CPU_NODE=0
+CPU_NODE=2
 
 
 COUT="/dev/null"
@@ -236,7 +236,7 @@ launch_workload()
                 #CMD_PREFIX=" LD_PRELOAD=libhugetlbfs.so HUGETLB_MORECORE=2M $NUMACTL"
                 CMD_PREFIX=" hugectl --heap $NUMACTL"
         fi
-        CMD_PREFIX+=" -m $DATA_NODE -c $CPU_NODE "
+        CMD_PREFIX+=" -C $CPU_NODE --membind $DATA_NODE"
         LAUNCH_CMD="$CMD_PREFIX $BENCHPATH $BENCH_ARGS"
         REDIRECT=$LOGFILE
         echo $LAUNCH_CMD
@@ -253,7 +253,7 @@ launch_workload()
         fi
         SECONDS=0
         echo -e "\e[0mWaiting for benchmark: $BENCHMARK_PID to be ready"
-        while [ ! -f yes ]; do
+        while [ ! -f /tmp/alloctest-bench.ready ]; do
                 sleep 0.1
         done
         INIT_DURATION=$SECONDS
