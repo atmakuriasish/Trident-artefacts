@@ -1,0 +1,9 @@
+datasets/canneal_small
+datasets/*kdd12*
+datasets/fragmentation
+vmconfigs/*.xml
+evaluation/*
+report/*
+test/*
+datasets/
+sources/

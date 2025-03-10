@@ -1,0 +1,129 @@
+REUSE DISTANCE
+make
+make: Nothing to be done for 'all'.
+Processing Kronecker_25:
+Creating bfs/data
+Creating bfs/figs
+Creating bfs/data/kron25/
+./reuse ../../data/Kronecker_25/ bfs 4096  > bfs/data/kron25/4kb
+./reuse ../../data/Kronecker_25/ bfs 2097152  > bfs/data/kron25/2mb
+./reuse ../../data/Kronecker_25/ bfs 1073741824  > bfs/data/kron25/1gb
+python3 compare_reuse.py bfs/data/kron25 1024
+Matplotlib is building the font cache; this may take a moment.
+dataset = kron25, TLB size = 1024
+READING: bfs/data/kron25/1gb
+NODE_ARRAY: starting base = 1ffff, ending base = 20000
+
+READING: bfs/data/kron25/2mb
+NODE_ARRAY: starting base = 3ffff3d, ending base = 3ffffbe
+
+READING: bfs/data/kron25/4kb
+NODE_ARRAY: starting base = 7fffe7a52, ending base = 7ffff7a53
+
+File path: bfs/figs/kron25/kron25_node_array.png
+Done!
+
+READING: bfs/data/kron25/1gb
+EDGE_ARRAY: starting base = 1fff7, ending base = 20000
+
+READING: bfs/data/kron25/2mb
+EDGE_ARRAY: starting base = 3ffefa2, ending base = 3ffff3e
+
+READING: bfs/data/kron25/4kb
+EDGE_ARRAY: starting base = 7ffdf44ad, ending base = 7fffe7a52
+
+File path: bfs/figs/kron25/kron25_edge_array.png
+Done!
+
+READING: bfs/data/kron25/1gb
+PROP_ARRAY: starting base = 1ffef, ending base = 1fff1
+
+READING: bfs/data/kron25/2mb
+PROP_ARRAY: starting base = 3ffdf87, ending base = 3ffe008
+
+READING: bfs/data/kron25/4kb
+PROP_ARRAY: starting base = 7ffbf0f07, ending base = 7ffc00f08
+
+File path: bfs/figs/kron25/kron25_prop_array.png
+Done!
+
+READING: bfs/data/kron25/1gb
+IN_WL: starting base = 1ffef, ending base = 1fff0
+
+READING: bfs/data/kron25/2mb
+IN_WL: starting base = 3ffde87, ending base = 3ffdf87
+
+READING: bfs/data/kron25/4kb
+IN_WL: starting base = 7ffbd0e00, ending base = 7ffbf0e00
+
+File path: bfs/figs/kron25/kron25_in_wl.png
+Done!
+
+READING: bfs/data/kron25/1gb
+OUT_WL: starting base = 1ffee, ending base = 1fff0
+
+READING: bfs/data/kron25/2mb
+OUT_WL: starting base = 3ffdd86, ending base = 3ffde86
+
+READING: bfs/data/kron25/4kb
+OUT_WL: starting base = 7ffbb0c00, ending base = 7ffbd0c00
+
+File path: bfs/figs/kron25/kron25_out_wl.png
+Done!
+
+File path: bfs/figs/kron25/kron25_all data.png
+Done!
+
+
+Processing Kronecker_25:
+Creating sssp/data
+Creating sssp/figs
+Creating sssp/data/kron25/
+./reuse ../../data/Kronecker_25/ sssp 4096  > sssp/data/kron25/4kb
+run.sh: line 27: 892298 Segmentation fault      ./reuse ${DATA_DIR}/$dataset/ $app ${page_sizes[$i]} ${start_seed[$d]} > $app/data/${dataset_names[$d]}/${reuse_suffix[$i]}
+./reuse ../../data/Kronecker_25/ sssp 2097152  > sssp/data/kron25/2mb
+run.sh: line 27: 892301 Segmentation fault      ./reuse ${DATA_DIR}/$dataset/ $app ${page_sizes[$i]} ${start_seed[$d]} > $app/data/${dataset_names[$d]}/${reuse_suffix[$i]}
+./reuse ../../data/Kronecker_25/ sssp 1073741824  > sssp/data/kron25/1gb
+run.sh: line 27: 892303 Segmentation fault      ./reuse ${DATA_DIR}/$dataset/ $app ${page_sizes[$i]} ${start_seed[$d]} > $app/data/${dataset_names[$d]}/${reuse_suffix[$i]}
+python3 compare_reuse.py sssp/data/kron25 1024
+dataset = kron25, TLB size = 1024
+READING: sssp/data/kron25/1gb
+READING: sssp/data/kron25/2mb
+READING: sssp/data/kron25/4kb
+File path: sssp/figs/kron25/kron25_node_array.png
+Done!
+
+READING: sssp/data/kron25/1gb
+READING: sssp/data/kron25/2mb
+READING: sssp/data/kron25/4kb
+File path: sssp/figs/kron25/kron25_edge_array.png
+Done!
+
+READING: sssp/data/kron25/1gb
+READING: sssp/data/kron25/2mb
+READING: sssp/data/kron25/4kb
+File path: sssp/figs/kron25/kron25_prop_array.png
+Done!
+
+READING: sssp/data/kron25/1gb
+READING: sssp/data/kron25/2mb
+READING: sssp/data/kron25/4kb
+File path: sssp/figs/kron25/kron25_in_wl.png
+Done!
+
+READING: sssp/data/kron25/1gb
+READING: sssp/data/kron25/2mb
+READING: sssp/data/kron25/4kb
+File path: sssp/figs/kron25/kron25_out_wl.png
+Done!
+
+File path: sssp/figs/kron25/kron25_all data.png
+Done!
+
+
+Processing Kronecker_25:
+Creating pagerank/data
+Creating pagerank/figs
+Creating pagerank/data/kron25/
+./reuse ../../data/Kronecker_25/ pagerank 4096  > pagerank/data/kron25/4kb
+./reuse ../../data/Kronecker_25/ pagerank 2097152  > pagerank/data/kron25/2mb
