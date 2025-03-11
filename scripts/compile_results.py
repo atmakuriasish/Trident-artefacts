@@ -84,7 +84,7 @@ def record_output(time, pwc, copy):
     output['time'] = time
     output['pwc'] = pwc
     output['copy'] = copy
-    print(output)
+    #print(output)
     summary.append(output)
 
 def process_perf_log(path):
@@ -210,9 +210,45 @@ def process_perf_log_new(path, measurements):
                 metric_vals["dTLBloads"] = value
             elif event_name == 'dTLB-stores':
                 metric_vals["dTLBstores"] = value
+            elif event_name == 'L1-dcache-load-misses':
+                metric_vals["L1dcacheloadmisses"] = value
+            elif event_name == 'L1-dcache-loads':
+                metric_vals["L1dcacheloads"] = value
+            elif event_name == 'L1-dcache-stores':
+                metric_vals["L1dcachestores"] = value
+            elif event_name == 'LLC-load-misses':
+                metric_vals["LLCloadmisses"] = value
+            elif event_name == 'LLC-loads':
+                metric_vals["LLCloads"] = value
+            elif event_name == 'LLC-store-misses':
+                metric_vals["LLCstoremisses"] = value
+            elif event_name == 'LLC-stores':
+                metric_vals["LLCstores"] = value
 
         fd.close()
         cycles = metric_vals["cycles"]
+
+        #cache events
+        l1_ld_misses = metric_vals["L1dcacheloadmisses"]
+        l1_lds = metric_vals["L1dcacheloads"]
+        l1_st_misses = 0 #metric_vals["L1dcachestoremisses"]
+        l1_sts = metric_vals["L1dcachestores"]
+        l1_misses = l1_ld_misses + l1_st_misses
+        l1_refs = l1_lds + l1_sts
+
+        llc_ld_misses = metric_vals["LLCloadmisses"]
+        llc_lds = metric_vals["LLCloads"]
+        llc_st_misses = metric_vals["LLCstoremisses"]
+        llc_sts = metric_vals["LLCstores"]
+        llc_misses = llc_ld_misses + llc_st_misses
+        llc_refs = llc_lds + llc_sts
+
+        measurements.write("CACHE:\n")
+        measurements.write("L1 Miss Rate: " + str(l1_misses*100.0/l1_refs) + "\n")
+        measurements.write("LLC Miss Rate: " + str(llc_misses*100.0/llc_refs) + "\n")
+        measurements.write("L3 Miss: " + str(llc_misses*100.0/l1_refs) + "\n")
+
+        measurements.write("\n")
 
         #tlb_ld_misses = metric_vals["dTLBloadmisses"]
         tlb_lds = metric_vals["dTLBloads"]
@@ -352,8 +388,8 @@ def process_all_runs(fd, fd2, output, absolute):
         for config in configs:
             dump_workload_config_average(output, bench, config, fd, fd2, absolute)
     #Asish: added prints for debugging
-    print(summary)
-    print(avg_summary)
+    #print(summary)
+    #print(avg_summary)
 
 def gen_csv_common(dst, benchs, confs, baseline, metric):
     out_fd = open(dst, mode = 'w')

@@ -231,21 +231,53 @@ launch_workload()
         rm /tmp/alloctest-bench.ready &>$COUT
         rm /tmp/alloctest-bench.done &> $COUT
 	echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid > $COUT
+        
+        #new way
         CMD_PREFIX=$NUMACTL
         if [[ $CONFIG = *HUGE* ]]; then
-                #CMD_PREFIX=" LD_PRELOAD=libhugetlbfs.so HUGETLB_MORECORE=2M $NUMACTL"
-                CMD_PREFIX=" hugectl --heap $NUMACTL"
+        CMD_PREFIX="hugectl --heap $NUMACTL"
         fi
         CMD_PREFIX+=" -C $CPU_NODE --membind $DATA_NODE"
-        LAUNCH_CMD="$CMD_PREFIX $BENCHPATH $BENCH_ARGS"
+
+        # Build the perf command with all events and output file
+        PERF_CMD="perf stat -x, -o $OUTFILE -e $PERF_EVENTS --"
+
+        # Construct the full launch command
+        LAUNCH_CMD="$PERF_CMD $CMD_PREFIX $BENCHPATH $BENCH_ARGS"
         REDIRECT=$LOGFILE
+
         echo $LAUNCH_CMD
         touch $OUTFILE
         cat /proc/vmstat | egrep 'migrate|th' >> $RUNDIR/vmstat
         sleep 1
+
+        # Run the command with output redirection
         $LAUNCH_CMD > $REDIRECT 2>&1 &
-        #$LAUNCH_CMD &
         BENCHMARK_PID=$!
+
+
+        #old way
+        # CMD_PREFIX=$NUMACTL
+        # if [[ $CONFIG = *HUGE* ]]; then
+        #         #CMD_PREFIX=" LD_PRELOAD=libhugetlbfs.so HUGETLB_MORECORE=2M $NUMACTL"
+        #         CMD_PREFIX=" hugectl --heap $NUMACTL"
+        # fi
+        # CMD_PREFIX+=" -C $CPU_NODE --membind $DATA_NODE"
+        # LAUNCH_CMD="$CMD_PREFIX $BENCHPATH $BENCH_ARGS"
+        # REDIRECT=$LOGFILE
+        # echo $LAUNCH_CMD
+        # touch $OUTFILE
+        # cat /proc/vmstat | egrep 'migrate|th' >> $RUNDIR/vmstat
+        # sleep 1
+        # $LAUNCH_CMD > $REDIRECT 2>&1 &
+        # #start perf from the beginning
+        # BENCHMARK_PID=$!
+        # if [ $PROFILE_PERF_EVENTS = "yes" ]; then
+	# 	$PERF stat -x, -o $OUTFILE --append -e $PERF_EVENTS -p $BENCHMARK_PID &
+	# 	PERF_PID=$!
+	# fi
+        #$LAUNCH_CMD &
+        # BENCHMARK_PID=$!
         if [ $CONFIG = "HAWKEYE" ]; then
                 sleep 1
                 $ROOT/bin/notify_hawkeye -p $BENCHMARK_PID > $COUT 2>&1
@@ -263,10 +295,10 @@ launch_workload()
         fi
         echo -e "Initialization Time (seconds): $INIT_DURATION"
         SECONDS=0
-	if [ $PROFILE_PERF_EVENTS = "yes" ]; then
-		$PERF stat -x, -o $OUTFILE --append -e $PERF_EVENTS -p $BENCHMARK_PID &
-		PERF_PID=$!
-	fi
+	# if [ $PROFILE_PERF_EVENTS = "yes" ]; then
+	# 	$PERF stat -x, -o $OUTFILE --append -e $PERF_EVENTS -p $BENCHMARK_PID &
+	# 	PERF_PID=$!
+	# fi
         echo -e "\e[0mWaiting for benchmark to be done"
         while [ ! -f /tmp/alloctest-bench.done ]; do
                 sleep 0.1
