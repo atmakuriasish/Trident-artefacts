@@ -1,0 +1,5 @@
+Total 1GB pages allocated: 8
+Breakdown:
+ - Fault allocations: 7
+ - Collapse allocations: 1
+ - Zero page allocations: 0

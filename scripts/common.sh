@@ -225,6 +225,35 @@ cleanup_system_configs()
 	echo 0 | sudo tee /sys/kernel/mm/transparent_hugepage/khugepaged/max_cpu > $COUT 2>&1
 }
 
+get_1gb_page_counters() 
+{
+    local vmstat_file="/proc/vmstat"
+    if [[ ! -f "$vmstat_file" ]]; then
+        echo "ERROR: /proc/vmstat not found. Are you running as root?" >&2
+        return 1
+    fi
+
+    # Initialize counters
+    declare -g thhp_fault_alloc=0
+    declare -g thhp_collapse_alloc=0
+    declare -g thhp_zero_page_alloc=0
+
+    # Use awk for efficient parsing
+    while read -r key value; do
+        case "$key" in
+            thhp_fault_alloc)
+                thhp_fault_alloc=$value
+                ;;
+            thhp_collapse_alloc)
+                thhp_collapse_alloc=$value
+                ;;
+            thhp_zero_page_alloc)
+                thhp_zero_page_alloc=$value
+                ;;
+        esac
+    done < <(awk '/^thhp_(fault_alloc|collapse_alloc|zero_page_alloc)/ {print $1, $2}' "$vmstat_file")
+}
+
 launch_workload()
 {
         # --- clean up exisiting state/processes
@@ -250,6 +279,14 @@ launch_workload()
         touch $OUTFILE
         cat /proc/vmstat | egrep 'migrate|th' >> $RUNDIR/vmstat
         sleep 1
+
+        # 1GB counters Before launching the application
+        if [ $CONFIG = "TRIDENT" ]; then
+                get_1gb_page_counters
+                initial_fault=$thhp_fault_alloc
+                initial_collapse=$thhp_collapse_alloc
+                initial_zero=$thhp_zero_page_alloc
+        fi
 
         # Run the command with output redirection
         $LAUNCH_CMD > $REDIRECT 2>&1 &
@@ -313,6 +350,30 @@ launch_workload()
 		wait $PERF_PID
 	fi
         cat /proc/vmstat | egrep 'migrate|th' >> $RUNDIR/vmstat
+
+        if [ $CONFIG = "TRIDENT" ]; then
+                # 1GB counters After application finishes
+                get_1gb_page_counters
+                allocated_1gb=$(( 
+                thhp_fault_alloc - initial_fault +
+                thhp_collapse_alloc - initial_collapse +
+                thhp_zero_page_alloc - initial_zero
+                ))
+
+                # Calculate differences
+                fault_diff=$((thhp_fault_alloc - initial_fault))
+                collapse_diff=$((thhp_collapse_alloc - initial_collapse))
+                zero_diff=$((thhp_zero_page_alloc - initial_zero))
+
+                # Write to output file
+                mkdir -p "$ROOT/report"
+                gb_output_file="$ROOT/report/${BENCHMARK}_1gb_stats.txt"
+                echo "Total 1GB pages allocated: $allocated_1gb" > "$gb_output_file"
+                echo "Breakdown:" >> "$gb_output_file"
+                echo " - Fault allocations: $fault_diff" >> "$gb_output_file"
+                echo " - Collapse allocations: $collapse_diff" >> "$gb_output_file"
+                echo " - Zero page allocations: $zero_diff" >> "$gb_output_file"
+        fi
         wait $BENCHMARK_PID 2>$COUT
 }
 
