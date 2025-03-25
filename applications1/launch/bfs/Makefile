@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-std=c++11 -fopenmp
+CXXFLAGS=-std=c++11 -O3 -Wno-unused-result
 
 TARGETS=bfs
 

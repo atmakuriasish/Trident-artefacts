@@ -22,6 +22,11 @@ void launch_app(string graph_fname, int run_kernel, unsigned long num_threads_ar
   data_structs.push_back((void*) out_wl);
 
   omp_set_num_threads(num_threads_arg);
+  // Signal initialization complete
+  std::ofstream ready_file("/tmp/alloctest-bench.ready");
+  if (ready_file.is_open()) {
+      ready_file.close();  // Create empty file
+  }
   setup_app();
 
 #pragma omp parallel
@@ -30,6 +35,11 @@ void launch_app(string graph_fname, int run_kernel, unsigned long num_threads_ar
   int num_threads = omp_get_num_threads();
   cout << tid << " running!" << endl;
   pagerank(G, x, in_r, out_r, in_wl, &in_index, out_wl, &out_index, tid, num_threads); // part of program to perf stat
+  // Signal computation complete
+  std::ofstream done_file("/tmp/alloctest-bench.done");
+  if (done_file.is_open()) {
+      done_file.close();  // Create empty file
+  }
 }
   
   cleanup_app(G);
@@ -47,10 +57,19 @@ int main(int argc, char** argv) {
   if (argc >= 3) num_threads = atoi(argv[2]);
   if (argc >= 4) run_kernel = atoi(argv[3]);
   if (argc >= 5) perf_cmd = argv[4];
-  else perf_cmd = "perf stat -p %d -B -v -e dTLB-load-misses,dTLB-loads -o stat.log";
-  if (argc >= 6) thp_filename = argv[5];
-  if (argc >= 7) pf_filename = argv[6];
-  if (argc >= 8) promotion_filename = argv[7];
+  //cout<<"this is perf_cmd\n"<<perf_cmd<<"\n";
+  // else perf_cmd = "perf stat -p %d -B -v -e dTLB-load-misses,dTLB-loads -o stat.log";
+  // if (argc >= 6) thp_filename = argv[5];
+  // if (argc >= 7) pf_filename = argv[6];
+  // if (argc >= 8) promotion_filename = argv[7];
+  // if (argc >= 9) demotion_filename = argv[8];
+
+  // Replace with hardcoded values:
+  //perf_cmd = "perf stat -p %d -B -v -e dTLB-load-misses,dTLB-loads -o /dev/null";  // Your full perf command
+  thp_filename = "/dev/null";
+  pf_filename = "/dev/null";
+  promotion_filename = "/mydata/PCC-artefacts/pin3.7/source/tools/PromotionCache/output/promotion_data/single_thread/pcc_128/30_sec/pagerank/kron25_0";
+
 
   if (run_kernel >= 0) {
     pid = getpid();

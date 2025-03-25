@@ -46,7 +46,8 @@ int main(int argc, char** argv) {
   graph_fname = argv[1];
   if (argc >= 3) run_kernel = atoi(argv[2]);
   if (argc >= 4) start_seed = atoi(argv[3]);
-  // if (argc >= 5) perf_cmd = argv[4];
+  if (argc >= 5) perf_cmd = argv[4];
+  //cout<<"this is perf_cmd\n"<<perf_cmd<<"\n";
   // else perf_cmd = "perf stat -p %d -B -v -e dTLB-load-misses,dTLB-loads -o stat.log";
   // if (argc >= 6) thp_filename = argv[5];
   // if (argc >= 7) pf_filename = argv[6];
@@ -54,7 +55,7 @@ int main(int argc, char** argv) {
   // if (argc >= 9) demotion_filename = argv[8];
 
   // Replace with hardcoded values:
-  perf_cmd = "perf stat -p %d -B -v -e dTLB-load-misses,dTLB-loads -o /dev/null";  // Your full perf command
+  //perf_cmd = "perf stat -p %d -B -v -e dTLB-load-misses,dTLB-loads -o /dev/null";  // Your full perf command
   thp_filename = "/dev/null";
   pf_filename = "/dev/null";
   promotion_filename = "/mydata/PCC-artefacts/pin3.7/source/tools/PromotionCache/output/promotion_data/single_thread/pcc_128/30_sec/bfs/kron25_0";
