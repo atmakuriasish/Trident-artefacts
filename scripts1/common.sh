@@ -16,6 +16,10 @@ BC_ARGS=" -g 29 -n 2 -i 2"
 DATA_NODE=0
 CPU_NODE=0
 
+THHP_MONITOR_PID=0  # Global PID variable
+MEM_MONITOR_PID=0  # Global PID variable
+sstart_ts=0         # Global timestamp
+
 
 COUT="/dev/null"
 drop_caches()
@@ -225,6 +229,104 @@ cleanup_system_configs()
 	echo 0 | sudo tee /sys/kernel/mm/transparent_hugepage/khugepaged/max_cpu > $COUT 2>&1
 }
 
+# # Add these functions to your script
+# start_hugepage_monitor() {
+#     local log_file="$RUNDIR/hugepages_ts.log"
+#     echo "timestamp,allocated_2mb,free_2mb,allocated_1gb,free_1gb" > "$log_file"
+    
+#     # Determine which hugepages to monitor based on config
+#     local monitor_2mb=0
+#     local monitor_1gb=0
+    
+#     [[ $CONFIG = *2MB* ]] && monitor_2mb=1
+#     [[ $CONFIG = *1GB* ]] && monitor_1gb=1
+
+#     while true; do
+#         local ts=$(date +%s)
+#         local mb_alloc=0
+#         local mb_free=0
+#         local gb_alloc=0 
+#         local gb_free=0
+        
+#         if [ $monitor_2mb -eq 1 ]; then
+#             mb_alloc=$(cat $MBSYSCTL)
+#             mb_free=$(cat ${MBSYSCTL/nr_hugepages/free_hugepages})
+#         fi
+        
+#         if [ $monitor_1gb -eq 1 ]; then
+#             gb_alloc=$(cat $GBSYSCTL)
+#             gb_free=$(cat ${GBSYSCTL/nr_hugepages/free_hugepages})
+#         fi
+        
+#         echo "$ts,$mb_alloc,$mb_free,$gb_alloc,$gb_free" >> "$log_file"
+#         sleep 5
+#     done
+# }
+
+# # Add these functions to your script
+# start_hhugepage_monitor() {
+#     local log_file="$RUNDIR/hhugepages_ts.log"
+#     echo "timestamp,allocated_2mb,free_2mb,allocated_1gb,free_1gb" > "$log_file"
+    
+#     # Determine which hugepages to monitor based on config
+#     local monitor_2mb=0
+#     local monitor_1gb=0
+    
+#     [[ $CONFIG = *2MB* ]] && monitor_2mb=1
+#     [[ $CONFIG = *1GB* ]] && monitor_1gb=1
+
+#     while true; do
+#         local ts=$(date +%s)
+#         local mb_alloc=0
+#         local mb_free=0
+#         local gb_alloc=0 
+#         local gb_free=0
+        
+#         if [ $monitor_2mb -eq 1 ]; then
+#             mb_alloc=$(cat $MBSYSCTL)
+#             mb_free=$(cat ${MBSYSCTL/nr_hugepages/free_hugepages})
+#         fi
+        
+#         if [ $monitor_1gb -eq 1 ]; then
+#             gb_alloc=$(cat $GBSYSCTL)
+#             gb_free=$(cat ${GBSYSCTL/nr_hugepages/free_hugepages})
+#         fi
+        
+#         echo "$ts,$mb_alloc,$mb_free,$gb_alloc,$gb_free" >> "$log_file"
+#         sleep 5
+#     done
+# }
+
+# plot_hugepages() {
+#     local log_file="$RUNDIR/hugepages_ts.log"
+#     local plot_script="$RUNDIR/plot_hugepages.gnuplot"
+    
+#     # Generate gnuplot script
+#     cat <<EOF > "$plot_script"
+# set terminal pngcairo enhanced font "arial,10" size 1200,600
+# set output '$RUNDIR/hugepages_timeseries.png'
+# set title "Hugepage Allocation Time Series (Config: $CONFIG)"
+# set xlabel "Time (seconds since start)"
+# set ylabel "Number of Pages"
+# set grid
+
+# set datafile separator comma
+# set key outside right top
+
+# plot "$log_file" using (\$1 - $start_ts):2 with lines title '2MB Allocated', \
+#      "" using (\$1 - $start_ts):3 with lines title '2MB Free', \
+#      "" using (\$1 - $start_ts):4 with lines title '1GB Allocated', \
+#      "" using (\$1 - $start_ts):5 with lines title '1GB Free'
+# EOF
+
+#     # Execute plot if gnuplot is available
+#     if command -v gnuplot &> /dev/null; then
+#         gnuplot "$plot_script"
+#     else
+#         echo "Gnuplot not found. Install with: sudo apt install gnuplot"
+#     fi
+# }
+
 get_1gb_page_counters() 
 {
     local vmstat_file="/proc/vmstat"
@@ -252,6 +354,142 @@ get_1gb_page_counters()
                 ;;
         esac
     done < <(awk '/^thhp_(fault_alloc|collapse_alloc|zero_page_alloc)/ {print $1, $2}' "$vmstat_file")
+}
+
+# Add to your existing script
+get_thhp_stats() {
+    local vmstat_file="/proc/vmstat"
+    if [[ ! -f "$vmstat_file" ]]; then
+        echo "ERROR: /proc/vmstat not found." >&2
+        return 1
+    fi
+
+    declare -g thhp_fault_alloc=0
+    declare -g thhp_collapse_alloc=0
+    declare -g thhp_zero_page_alloc=0
+
+    # Extract THP stats using awk
+    while read -r key value; do
+        case "$key" in
+            thhp_fault_alloc)
+                thhp_fault_alloc=$value
+                ;;
+            thhp_collapse_alloc)
+                thhp_collapse_alloc=$value
+                ;;
+            thhp_zero_page_alloc)
+                thhp_zero_page_alloc=$value
+                ;;
+        esac
+    done < <(awk '/^thhp_(fault_alloc|collapse_alloc|zero_page_alloc)/ {print $1, $2}' "$vmstat_file")
+}
+
+monitor_thhp() {
+    local log_file="$RUNDIR/thhp_ts.log"
+    echo "timestamp,thhp_fault_alloc,thhp_collapse_alloc,thhp_zero_page_alloc" > "$log_file"
+
+    while true; do
+        get_thhp_stats
+        echo "$(date +%s),$thhp_fault_alloc,$thhp_collapse_alloc,$thhp_zero_page_alloc" >> "$log_file"
+        sleep 5
+    done
+}
+
+# Add to your existing script
+get_thp_stats() {
+    local vmstat_file="/proc/vmstat"
+    if [[ ! -f "$vmstat_file" ]]; then
+        echo "ERROR: /proc/vmstat not found." >&2
+        return 1
+    fi
+
+    declare -g thp_fault_alloc=0
+    declare -g thp_collapse_alloc=0
+    declare -g thp_split=0
+    declare -g thp_zero_page_alloc=0
+
+    # Extract THP stats using awk
+    while read -r key value; do
+        case "$key" in
+            thp_fault_alloc)
+                thp_fault_alloc=$value
+                ;;
+            thp_collapse_alloc)
+                thp_collapse_alloc=$value
+                ;;
+            thp_split)
+                thp_split=$value
+                ;;
+            thp_zero_page_alloc)
+                thp_zero_page_alloc=$value
+                ;;
+        esac
+    done < <(awk '/^thp_(fault_alloc|collapse_alloc|split|zero_page_alloc)/ {print $1, $2}' "$vmstat_file")
+}
+
+monitor_thp() {
+    local log_file="$RUNDIR/thp_ts.log"
+    echo "timestamp,thp_fault_alloc,thp_collapse_alloc,thp_split,thp_zero_page_alloc" > "$log_file"
+
+    while true; do
+        get_thp_stats
+        echo "$(date +%s),$thp_fault_alloc,$thp_collapse_alloc,$thp_split,$thp_zero_page_alloc" >> "$log_file"
+        sleep 5
+    done
+}
+
+plot_thp() {
+    local log_file="$RUNDIR/thp_ts.log"
+    local plot_script="$RUNDIR/plot_thp.gnuplot"
+
+    cat <<EOF > "$plot_script"
+set terminal pngcairo enhanced font "arial,10" size 1200,600
+set output '$RUNDIR/thp_timeseries.png'
+set title "THP Metrics (Config: $CONFIG)"
+set xlabel "Time (seconds since start)"
+set ylabel "Count"
+set grid
+set datafile separator comma
+set key outside right top
+
+plot "$log_file" using (\$1 - $start_ts):2 with lines title 'Fault Alloc', \
+     "" using (\$1 - $start_ts):3 with lines title 'Collapse Alloc', \
+     "" using (\$1 - $start_ts):4 with lines title 'Splits', \
+     "" using (\$1 - $start_ts):5 with lines title 'Zero Page Alloc'
+EOF
+
+    if command -v gnuplot &> /dev/null; then
+        gnuplot "$plot_script"
+    else
+        echo "Install gnuplot: sudo apt install gnuplot"
+    fi
+}
+
+# Add these functions to common.sh
+start_memory_monitor() {
+    local output_dir="$1"
+    local log_file="$output_dir/memory_usage.csv"
+    
+    # Create header if file doesn't exist
+    [ ! -f "$log_file" ] && echo "timestamp,total_mb,free_mb,available_mb,buffers_mb,cached_mb,used_mb" > "$log_file"
+    
+    while true; do
+        # Get memory metrics from /proc/meminfo
+        local total=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}')
+        local free=$(grep MemFree /proc/meminfo | awk '{print $2/1024}')
+        local available=$(grep MemAvailable /proc/meminfo | awk '{print $2/1024}')
+        local buffers=$(grep Buffers /proc/meminfo | awk '{print $2/1024}')
+        local cached=$(grep -w Cached /proc/meminfo | awk '{print $2/1024}')
+        
+        # Use bc for floating-point calculation
+        local used=$(printf "%.1f" "$(echo "$total - $free - $buffers" | bc -l)")
+        
+        # Append to CSV
+        printf "%s,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f\n" \
+            $(date +%s) $total $free $available $buffers $cached $used >> "$log_file"
+        
+        sleep 5
+    done
 }
 
 launch_workload()
@@ -283,11 +521,23 @@ launch_workload()
 
         # 1GB counters Before launching the application
         if [ $CONFIG = "TRIDENT" ]; then
-                get_1gb_page_counters
-                initial_fault=$thhp_fault_alloc
-                initial_collapse=$thhp_collapse_alloc
-                initial_zero=$thhp_zero_page_alloc
+                monitor_thhp &
+                THHP_MONITOR_PID=$!
+                sstart_ts=$(date +%s)
         fi
+
+        # start_hugepage_monitor &
+        # MONITOR_PID=$!
+        # start_ts=$(date +%s)
+
+        # Start THP monitoring
+        monitor_thp &
+        THP_MONITOR_PID=$!
+        start_ts=$(date +%s)
+
+        # Start memory monitoring
+        start_memory_monitor "$RUNDIR" &
+        MEM_MONITOR_PID=$!
 
         # Run the command with output redirection
         $LAUNCH_CMD "$INTERNAL_PERF_CMD" > $REDIRECT 2>&1 &
@@ -353,29 +603,47 @@ launch_workload()
         cat /proc/vmstat | egrep 'migrate|th' >> $RUNDIR/vmstat
 
         if [ $CONFIG = "TRIDENT" ]; then
-                # 1GB counters After application finishes
-                get_1gb_page_counters
-                allocated_1gb=$(( 
-                thhp_fault_alloc - initial_fault +
-                thhp_collapse_alloc - initial_collapse +
-                thhp_zero_page_alloc - initial_zero
-                ))
-
-                # Calculate differences
-                fault_diff=$((thhp_fault_alloc - initial_fault))
-                collapse_diff=$((thhp_collapse_alloc - initial_collapse))
-                zero_diff=$((thhp_zero_page_alloc - initial_zero))
-
-                # Write to output file
-                mkdir -p "$ROOT/report"
-                gb_output_file="$ROOT/report/${BENCHMARK}_1gb_stats.txt"
-                echo "Total 1GB pages allocated: $allocated_1gb" > "$gb_output_file"
-                echo "Breakdown:" >> "$gb_output_file"
-                echo " - Fault allocations: $fault_diff" >> "$gb_output_file"
-                echo " - Collapse allocations: $collapse_diff" >> "$gb_output_file"
-                echo " - Zero page allocations: $zero_diff" >> "$gb_output_file"
+                kill $THHP_MONITOR_PID
+                wait $THHP_MONITOR_PID 2>/dev/null
         fi
+                # # 1GB counters After application finishes
+                # get_1gb_page_counters
+                # allocated_1gb=$(( 
+                # thhp_fault_alloc - initial_fault +
+                # thhp_collapse_alloc - initial_collapse +
+                # thhp_zero_page_alloc - initial_zero
+                # ))
+
+                # # Calculate differences
+                # fault_diff=$((thhp_fault_alloc - initial_fault))
+                # collapse_diff=$((thhp_collapse_alloc - initial_collapse))
+                # zero_diff=$((thhp_zero_page_alloc - initial_zero))
+
+                # # Write to output file
+                # mkdir -p "$ROOT/report"
+                # gb_output_file="$ROOT/report/${BENCHMARK}_1gb_stats.txt"
+                # echo "Total 1GB pages allocated: $allocated_1gb" > "$gb_output_file"
+                # echo "Breakdown:" >> "$gb_output_file"
+                # echo " - Fault allocations: $fault_diff" >> "$gb_output_file"
+                # echo " - Collapse allocations: $collapse_diff" >> "$gb_output_file"
+                # echo " - Zero page allocations: $zero_diff" >> "$gb_output_file"
+        # fi
         wait $BENCHMARK_PID 2>$COUT
+        # kill $MONITOR_PID  # Stop monitoring
+        # wait $MONITOR_PID 2>/dev/null
+
+        # # Generate plot
+        # plot_hugepages
+
+        # Stop monitoring after workload completes
+        kill $MEM_MONITOR_PID
+        wait $MEM_MONITOR_PID 2>/dev/null
+
+        kill $THP_MONITOR_PID
+        wait $THP_MONITOR_PID 2>/dev/null
+
+        # Generate plot
+        #plot_thp
 }
 
 reserve_kvm_hugetlb_pages()

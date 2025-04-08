@@ -1,9 +1,9 @@
 #!/bin/bash
 
-BENCHMARKS="bfs sssp pgr"
+BENCHMARKS="bfs pgr sssp"
 #CONFIGS="2MBTHP TRIDENT" #HAWKEYE
 # -- Better to re-use 2MBTHP from Figure-1
-CONFIGS="TRIDENT"
+CONFIGS="HAWKEYE"
 # -- For HAWKEYE, boot system with HawkEye and uncomment the following line
 #CONFIGS="HAWKEYE"
 
