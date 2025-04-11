@@ -471,26 +471,29 @@ start_memory_monitor() {
     local log_file="$output_dir/memory_usage.csv"
     
     # Create header if file doesn't exist
-    [ ! -f "$log_file" ] && echo "timestamp,total_mb,free_mb,available_mb,buffers_mb,cached_mb,used_mb" > "$log_file"
+    [ ! -f "$log_file" ] && echo "timestamp,total_mb,free_mb,available_mb,buffers_mb,cached_mb,sreclaimable_mb,shmem_mb,used_mb" > "$log_file"
     
     while true; do
-        # Get memory metrics from /proc/meminfo
-        local total=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}')
-        local free=$(grep MemFree /proc/meminfo | awk '{print $2/1024}')
-        local available=$(grep MemAvailable /proc/meminfo | awk '{print $2/1024}')
-        local buffers=$(grep Buffers /proc/meminfo | awk '{print $2/1024}')
-        local cached=$(grep -w Cached /proc/meminfo | awk '{print $2/1024}')
+        # Get memory metrics as integers (matches Python's //1024)
+        local total=$(grep -w 'MemTotal' /proc/meminfo | awk '{print int($2/1024)}')
+        local free=$(grep -w 'MemFree' /proc/meminfo | awk '{print int($2/1024)}')
+        local available=$(grep -w 'MemAvailable' /proc/meminfo | awk '{print int($2/1024)}')
+        local buffers=$(grep -w 'Buffers' /proc/meminfo | awk '{print int($2/1024)}')
+        local cached=$(grep -w 'Cached' /proc/meminfo | awk '{print int($2/1024)}')
+        local sreclaimable=$(grep -w 'SReclaimable' /proc/meminfo | awk '{print int($2/1024)}')
+        local shmem=$(grep -w 'Shmem' /proc/meminfo | awk '{print int($2/1024)}')
         
-        # Use bc for floating-point calculation
-        local used=$(printf "%.1f" "$(echo "$total - $free - $buffers" | bc -l)")
+        # Calculate used memory exactly like Python version
+        local used=$(( total - free - buffers - cached - sreclaimable + shmem ))
         
-        # Append to CSV
-        printf "%s,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f\n" \
-            $(date +%s) $total $free $available $buffers $cached $used >> "$log_file"
+        # Append to CSV with integer values
+        printf "%s,%d,%d,%d,%d,%d,%d,%d,%d\n" \
+            $(date +%s) "$total" "$free" "$available" "$buffers" "$cached" "$sreclaimable" "$shmem" "$used" >> "$log_file"
         
         sleep 5
     done
 }
+
 
 launch_workload()
 {
