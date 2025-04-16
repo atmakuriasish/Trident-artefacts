@@ -1,0 +1,4 @@
+Dropping caches for config: 4KB
+Configuration: 4KB completed.
+/mydata/Trident-artefacts/bin/numactl -m 0 -c 0 /mydata/Trident-artefacts/bin/xsbench -s XL -t 24 -l 800000000
+[0mWaiting for benchmark: 35826 to be ready
