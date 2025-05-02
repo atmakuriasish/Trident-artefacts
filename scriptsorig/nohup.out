@@ -1,4 +1,6 @@
-Dropping caches for config: 4KB
-Configuration: 4KB completed.
-/mydata/Trident-artefacts/bin/numactl -m 0 -c 0 /mydata/Trident-artefacts/bin/xsbench -s XL -t 24 -l 800000000
-[0mWaiting for benchmark: 35826 to be ready
+Dropping caches for config: HAWKEYE
+Configuration: HAWKEYE completed.
+/mydata/Trident-artefacts/bin/numactl -m 0 -c 0 /mydata/Trident-artefacts/bin/pr -g 29 -n 20 -i 20
+Added PID: 46008 to HawkEye Scan List...
+[0mWaiting for benchmark: 46008 to be ready
+/mydata/Trident-artefacts/scriptsorig/common.sh: line 395: 46008 Terminated              $LAUNCH_CMD > $REDIRECT 2>&1

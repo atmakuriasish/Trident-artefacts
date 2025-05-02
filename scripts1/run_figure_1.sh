@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#BENCHMARKS="bfs sssp pgr"
-BENCHMARKS="xsbench gups svm redis btree graph500 memcached canneal pr cc bc cg"
+BENCHMARKS="bfs sssp pgr"
+# BENCHMARKS="xsbench gups svm redis btree graph500 memcached canneal pr cc bc cg"
 CONFIGS="4KB 2MBTHP" #1GBHUGE
 #CONFIGS="4KB 2MBTHP 2MBHUGE" #1GBHUGE
 # For 1GBHUGE, boot kernel with command-line parameter "default_hugepagesz=1G"

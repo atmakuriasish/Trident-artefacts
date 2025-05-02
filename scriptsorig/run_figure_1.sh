@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BENCHMARKS="xsbench gups svm redis btree graph500 memcached canneal pr cc bc cg"
+BENCHMARKS="xsbench svm redis btree graph500 pr cc bc cg"
 CONFIGS="4KB 2MBTHP" #1GBHUGE
 # For 1GBHUGE, boot kernel with command-line parameter "default_hugepagesz=1G"
 # and uncomment the following line

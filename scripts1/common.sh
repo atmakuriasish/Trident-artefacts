@@ -471,7 +471,7 @@ start_memory_monitor() {
     local log_file="$output_dir/memory_usage.csv"
     
     # Create header if file doesn't exist
-    [ ! -f "$log_file" ] && echo "timestamp,total_mb,free_mb,available_mb,buffers_mb,cached_mb,sreclaimable_mb,shmem_mb,used_mb" > "$log_file"
+    [ ! -f "$log_file" ] && echo "timestamp,total_mb,free_mb,available_mb,buffers_mb,cached_mb,sreclaimable_mb,shmem_mb,used_mb,swap_total_mb,swap_free_mb,swap_used_mb" > "$log_file"
     
     while true; do
         # Get memory metrics as integers (matches Python's //1024)
@@ -482,14 +482,18 @@ start_memory_monitor() {
         local cached=$(grep -w 'Cached' /proc/meminfo | awk '{print int($2/1024)}')
         local sreclaimable=$(grep -w 'SReclaimable' /proc/meminfo | awk '{print int($2/1024)}')
         local shmem=$(grep -w 'Shmem' /proc/meminfo | awk '{print int($2/1024)}')
+
+        # Get swap metrics
+        local swap_total=$(grep -w 'SwapTotal' /proc/meminfo | awk '{print int($2/1024)}')
+        local swap_free=$(grep -w 'SwapFree' /proc/meminfo | awk '{print int($2/1024)}')
+        local swap_used=$(( swap_total - swap_free ))
         
         # Calculate used memory exactly like Python version
-        local used=$(( total - free - buffers - cached - sreclaimable + shmem ))
+        local used=$(( total - free - buffers - cached - sreclaimable + shmem + swap_used))
         
-        # Append to CSV with integer values
-        printf "%s,%d,%d,%d,%d,%d,%d,%d,%d\n" \
-            $(date +%s) "$total" "$free" "$available" "$buffers" "$cached" "$sreclaimable" "$shmem" "$used" >> "$log_file"
-        
+        # Append to CSV with swap columns
+        printf "%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n" \
+            $(date +%s) "$total" "$free" "$available" "$buffers" "$cached" "$sreclaimable" "$shmem" "$used" "$swap_total" "$swap_free" "$swap_used" >> "$log_file"
         sleep 5
     done
 }
